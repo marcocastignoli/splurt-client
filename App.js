@@ -6,9 +6,41 @@
  * @lint-ignore-every XPLATJSCOPYRIGHT1
  */
 
-import React, {Component} from 'react';
-import {Platform, StyleSheet, Text, View, Button} from 'react-native';
+import React, { Component } from 'react';
+import { Platform, StyleSheet, Text, View, Button, TextInput } from 'react-native';
 import VIForegroundService from "@voximplant/react-native-foreground-service";
+import AsyncStorage from '@react-native-community/async-storage'
+
+const storeData = async (key, value) => {
+    try {
+        await AsyncStorage.setItem(`@${key}`, JSON.stringify(value))
+        return true
+    } catch (e) {
+        return false
+    }
+}
+
+const removeData = async key => {
+    try {
+        await AsyncStorage.removeItem(`@${key}`)
+        return true
+    } catch (e) {
+        return false
+    }
+}
+
+
+
+const getData = async key => {
+    try {
+        const value = await AsyncStorage.getItem(`@${key}`)
+        return JSON.parse(value)
+    } catch (e) {
+        return false
+    }
+}
+
+var PushNotification = require("react-native-push-notification")
 
 type Props = {};
 export default class App extends Component<Props> {
@@ -39,19 +71,128 @@ export default class App extends Component<Props> {
             notificationConfig.channelId = 'ForegroundServiceChannel';
         }
         await VIForegroundService.startService(notificationConfig);
+        await storeData('service-running', true)
+        this.setState({serviceRunning: true})
     }
 
     async stopService() {
-        await VIForegroundService.stopService();
+        await removeData('service-running')
+        this.setState({serviceRunning: false})
+        await VIForegroundService.stopService()
     }
 
+    initAuth() {
+        return {
+            token: null,
+            data: {}
+        }
+    }
+
+    state = {
+        name: 'marco',
+        pwd: '12345',
+        urlAuthentication: 'http://192.168.1.64:8888',
+        urlWebsocket: 'ws://192.168.1.64:3334',
+        auth: {
+            token: null,
+            data: this.initAuth()
+        },
+        err: '',
+        serviceRunning: false
+    }
+
+    async componentDidMount() {
+        this.setState({
+            auth: await getData('auth'),
+            serviceRunning: await getData('service-running')
+        })
+    }
+
+    logout() {
+        removeData('auth')
+        this.setState({ auth: this.initAuth() })
+    }
+
+    async login() {
+        fetch(`${this.state.urlAuthentication}/users/login`, {
+            method: 'POST',
+            body: JSON.stringify({
+                name: this.state.name,
+                pwd: this.state.pwd,
+            }),
+            headers: {
+                "Content-Type": 'application/json'
+            }
+        })
+            .then(r => r.json())
+            .then(async auth => {
+                try {
+                    await storeData('auth', auth)
+                    await storeData('url-websocket', this.state.urlWebsocket)
+                    const urlWebsocket = await getData('url-websocket')
+                    this.setState({ auth }, () => {
+                        var ws = new WebSocket(`${urlWebsocket}`);
+                        ws.onopen = async () => {
+                            // connection opened
+                            const token = await auth.token
+                            ws.send(JSON.stringify({
+                                channel: 'authentication',
+                                data: token
+                            }));
+                        };
+                        ws.onmessage = (e) => {
+                            const message = JSON.parse(e.data)
+                            PushNotification.localNotification({
+                                message: message.title,
+                                title: message.service,
+
+                            });
+                        };
+                    })
+                } catch (e) {
+                    this.setState({ err: e.toString() })
+                }
+            })
+            .catch(e => this.setState({ err: e.toString() }))
+    }
+
+    async setUrlWebsocket(text) {
+        this.setState({ urlWebsocket: text })
+        await storeData('url-websocket', text)
+    }
 
     render() {
+        const { name, pwd, auth, err, data, serviceRunning, urlAuthentication, urlWebsocket } = this.state
+
         return (
             <View style={styles.container}>
-                <Button title="Start foreground service" onPress={() => this.startService()}/>
-                <View style={styles.space}/>
-                <Button title="Stop foreground service" onPress={() => this.stopService()}/>
+                <Text>{err}</Text>
+                {!(auth && auth.token) ?
+                    <View>
+                        <TextInput style={{ width: 300, borderColor: 'gray', borderWidth: 1 }} onChangeText={text => this.setState({ urlAuthentication: text })} value={urlAuthentication} />
+                        <View style={styles.space} />
+                        <TextInput style={{ width: 300, borderColor: 'gray', borderWidth: 1 }} onChangeText={text => this.setUrlWebsocket(text)} value={urlWebsocket} />
+                        <View style={styles.space} />
+                        <TextInput style={{ width: 300, borderColor: 'gray', borderWidth: 1 }} onChangeText={text => this.setState({ name: text })} value={name} />
+                        <View style={styles.space} />
+                        <TextInput style={{ width: 300, borderColor: 'gray', borderWidth: 1 }} onChangeText={text => this.setState({ pwd: text })} value={pwd} />
+                        <View style={styles.space} />
+                        <Button title="Login" onPress={() => this.login()} />
+                    </View>
+                    :
+                    <View>
+                        <Text>Logged in as {auth && auth.data && auth.data.name}</Text>
+                        <View style={styles.space} />
+                        <Button title="Logout" onPress={() => this.logout()} />
+                    </View>
+                }
+                <View style={styles.space} />
+                { serviceRunning ?
+                    <Button title="Stop foreground service" onPress={() => this.stopService()} />
+                    :
+                    <Button title="Start foreground service" onPress={() => this.startService()} />
+                }
+                <View style={styles.space} />
             </View>
         );
     }

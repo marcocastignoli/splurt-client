@@ -8,9 +8,12 @@
     "lint": "eslint ."
   },
   "dependencies": {
+    "@react-native-community/async-storage": "^1.6.2",
+    "@voximplant/react-native-foreground-service": "2.0.0",
     "react": "16.8.6",
     "react-native": "0.60.3",
-    "@voximplant/react-native-foreground-service": "2.0.0"
+    "react-native-local-notifications": "^2.0.0",
+    "react-native-push-notification": "^3.1.9"
   },
   "devDependencies": {
     "@babel/core": "^7.5.4",
