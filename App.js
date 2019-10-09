@@ -91,8 +91,8 @@ export default class App extends Component<Props> {
     state = {
         name: 'marco',
         pwd: '12345',
-        urlAuthentication: 'http://172.16.125.165:8888',
-        urlWebsocket: 'ws://172.16.125.165:3334',
+        urlAuthentication: 'http://192.168.1.76:8888',
+        urlWebsocket: 'ws://192.168.1.76:3334',
         auth: {
             token: null,
             data: this.initAuth()
@@ -185,34 +185,44 @@ export default class App extends Component<Props> {
                 try {
                     await storeData('auth', auth)
                     await storeData('url-websocket', this.state.urlWebsocket)
-                    const urlWebsocket = await getData('url-websocket')
                     this.setState({ auth }, () => {
 
                         this.loadServices()
+                        this.connectWebsocket(auth)
 
-                        var ws = new WebSocket(`${urlWebsocket}`);
-                        ws.onopen = async () => {
-                            // connection opened
-                            const token = await auth.token
-                            ws.send(JSON.stringify({
-                                channel: 'authentication',
-                                data: token
-                            }));
-                        };
-                        ws.onmessage = (e) => {
-                            const message = JSON.parse(e.data)
-                            PushNotification.localNotification({
-                                message: message.title,
-                                title: message.service,
-
-                            });
-                        };
                     })
                 } catch (e) {
                     this.setState({ err: e.toString() })
                 }
             })
             .catch(e => this.setState({ err: e.toString() }))
+    }
+
+    async connectWebsocket(auth) {
+        const urlWebsocket = await getData('url-websocket')
+        let ws = new WebSocket(`${urlWebsocket}`);
+        ws.onopen = async () => {
+            this.setState({err: 'connected'})
+            // connection opened
+            const token = await auth.token
+            ws.send(JSON.stringify({
+                channel: 'authentication',
+                data: token
+            }));
+        };
+        ws.onmessage = (e) => {
+            const message = JSON.parse(e.data)
+            PushNotification.localNotification({
+                message: message.title,
+                title: message.service,
+
+            });
+        };
+        ws.onerror = () => {
+            ws = null
+            this.setState({err: 'disconnected... trying to reconnect...'})
+            this.connectWebsocket(auth)
+        }
     }
 
     async setUrlWebsocket(text) {
