@@ -98,14 +98,70 @@ export default class App extends Component<Props> {
             data: this.initAuth()
         },
         err: '',
-        serviceRunning: false
+        serviceRunning: false,
+        services: []
     }
 
     async componentDidMount() {
         this.setState({
             auth: await getData('auth'),
             serviceRunning: await getData('service-running')
+        }, () => {
+            this.loadServices()
         })
+
+    }
+
+    loadServices() {
+        let token
+        try {
+            token = this.state.auth.token
+        } catch (e) { }
+        if (token) {
+            fetch(`${this.state.urlAuthentication}/users/available_services`, {
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                }
+            })
+                .then(r => r.json())
+                .then(services => {
+                    this.setState({ services })
+                })
+        }
+    }
+
+    denyService(service) {
+        let token
+        try {
+            token = this.state.auth.token
+        } catch (e) { }
+        if (token) {
+            fetch(`${this.state.urlAuthentication}/users/service/${service}`, {
+                method: 'DELETE',
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                }
+            }).then(() => {
+                this.loadServices()
+            })
+        }
+    }
+
+    allowService(service) {
+        let token
+        try {
+            token = this.state.auth.token
+        } catch (e) { }
+        if (token) {
+            fetch(`${this.state.urlAuthentication}/users/service/${service}`, {
+                method: 'PUT',
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                }
+            }).then(() => {
+                this.loadServices()
+            })
+        }
     }
 
     logout() {
@@ -131,6 +187,9 @@ export default class App extends Component<Props> {
                     await storeData('url-websocket', this.state.urlWebsocket)
                     const urlWebsocket = await getData('url-websocket')
                     this.setState({ auth }, () => {
+
+                        this.loadServices()
+
                         var ws = new WebSocket(`${urlWebsocket}`);
                         ws.onopen = async () => {
                             // connection opened
@@ -162,7 +221,7 @@ export default class App extends Component<Props> {
     }
 
     render() {
-        const { name, pwd, auth, err, data, serviceRunning, urlAuthentication, urlWebsocket } = this.state
+        const { name, pwd, auth, err, data, serviceRunning, urlAuthentication, urlWebsocket, services } = this.state
 
         return (
             <View style={styles.container}>
@@ -180,17 +239,19 @@ export default class App extends Component<Props> {
                         <Button title="Login" onPress={() => this.login()} />
                     </View>
                     :
-                    <View style={{alignSelf: 'stretch',}}>
+                    <View style={{ alignSelf: 'stretch', }}>
                         <View style={styles.list}>
                             <FlatList
-                                data={[
-                                    { key: 'Devin' },
-                                    { key: 'Dan' },
-                                ]}
+                                data={services}
+                                keyExtractor={item => item._id}
                                 renderItem={({ item }) => (
-                                    <View style={{alignSelf: 'stretch', flex: 1, flexDirection: 'row',marginVertical: 8,backgroundColor: '#eeeeee',}}>
-                                        <Text style={styles.item}>{item.key}</Text>
-                                        <Button style={styles.item} title="Activate" />
+                                    <View style={{ alignSelf: 'stretch', flex: 1, flexDirection: 'row', marginVertical: 8, backgroundColor: '#eeeeee', }}>
+                                        <Text style={styles.item}>{item.name}</Text>
+                                        {item.active ?
+                                            <Button style={styles.item} title="Deny" onPress={() => this.denyService(item._id)} />
+                                            :
+                                            <Button style={styles.item} title="Allow" onPress={() => this.allowService(item._id)} />
+                                        }
                                     </View>
                                 )}
                             />
