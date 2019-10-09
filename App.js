@@ -202,7 +202,6 @@ export default class App extends Component<Props> {
         const urlWebsocket = await getData('url-websocket')
         let ws = new WebSocket(`${urlWebsocket}`);
         ws.onopen = async () => {
-            this.setState({err: 'connected'})
             // connection opened
             const token = await auth.token
             ws.send(JSON.stringify({
@@ -220,7 +219,6 @@ export default class App extends Component<Props> {
         };
         ws.onerror = () => {
             ws = null
-            this.setState({err: 'disconnected... trying to reconnect...'})
             this.connectWebsocket(auth)
         }
     }
