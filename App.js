@@ -7,7 +7,7 @@
  */
 
 import React, { Component } from 'react';
-import { Platform, StyleSheet, Text, View, Button, TextInput } from 'react-native';
+import { Platform, StyleSheet, Text, View, Button, TextInput, FlatList } from 'react-native';
 import VIForegroundService from "@voximplant/react-native-foreground-service";
 import AsyncStorage from '@react-native-community/async-storage'
 
@@ -72,12 +72,12 @@ export default class App extends Component<Props> {
         }
         await VIForegroundService.startService(notificationConfig);
         await storeData('service-running', true)
-        this.setState({serviceRunning: true})
+        this.setState({ serviceRunning: true })
     }
 
     async stopService() {
         await removeData('service-running')
-        this.setState({serviceRunning: false})
+        this.setState({ serviceRunning: false })
         await VIForegroundService.stopService()
     }
 
@@ -91,8 +91,8 @@ export default class App extends Component<Props> {
     state = {
         name: 'marco',
         pwd: '12345',
-        urlAuthentication: 'http://192.168.1.64:8888',
-        urlWebsocket: 'ws://192.168.1.64:3334',
+        urlAuthentication: 'http://172.16.125.165:8888',
+        urlWebsocket: 'ws://172.16.125.165:3334',
         auth: {
             token: null,
             data: this.initAuth()
@@ -180,14 +180,29 @@ export default class App extends Component<Props> {
                         <Button title="Login" onPress={() => this.login()} />
                     </View>
                     :
-                    <View>
+                    <View style={{alignSelf: 'stretch',}}>
+                        <View style={styles.list}>
+                            <FlatList
+                                data={[
+                                    { key: 'Devin' },
+                                    { key: 'Dan' },
+                                ]}
+                                renderItem={({ item }) => (
+                                    <View style={{alignSelf: 'stretch', flex: 1, flexDirection: 'row',marginVertical: 8,backgroundColor: '#eeeeee',}}>
+                                        <Text style={styles.item}>{item.key}</Text>
+                                        <Button style={styles.item} title="Activate" />
+                                    </View>
+                                )}
+                            />
+                        </View>
+                        <View style={styles.space} />
                         <Text>Logged in as {auth && auth.data && auth.data.name}</Text>
                         <View style={styles.space} />
                         <Button title="Logout" onPress={() => this.logout()} />
                     </View>
                 }
                 <View style={styles.space} />
-                { serviceRunning ?
+                {serviceRunning ?
                     <Button title="Stop foreground service" onPress={() => this.stopService()} />
                     :
                     <Button title="Start foreground service" onPress={() => this.startService()} />
@@ -207,5 +222,13 @@ const styles = StyleSheet.create({
     },
     space: {
         flex: 0.1
+    },
+    list: {
+        height: 200,
+        alignSelf: 'stretch',
+    },
+    item: {
+        flex: 5,
+        flexDirection: 'column'
     }
 });
