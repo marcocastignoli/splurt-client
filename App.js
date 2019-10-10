@@ -42,6 +42,8 @@ const getData = async key => {
 
 var PushNotification = require("react-native-push-notification")
 
+let globalWs = null
+
 type Props = {};
 export default class App extends Component<Props> {
 
@@ -167,6 +169,7 @@ export default class App extends Component<Props> {
     logout() {
         removeData('auth')
         this.setState({ auth: this.initAuth() })
+        this.disconnectWebsocket()
     }
 
     async login() {
@@ -200,16 +203,16 @@ export default class App extends Component<Props> {
 
     async connectWebsocket(auth) {
         const urlWebsocket = await getData('url-websocket')
-        let ws = new WebSocket(`${urlWebsocket}`);
-        ws.onopen = async () => {
+        globalWs = new WebSocket(`${urlWebsocket}`);
+        globalWs.onopen = async () => {
             // connection opened
             const token = await auth.token
-            ws.send(JSON.stringify({
+            globalWs.send(JSON.stringify({
                 channel: 'authentication',
                 data: token
             }));
         };
-        ws.onmessage = (e) => {
+        globalWs.onmessage = (e) => {
             const message = JSON.parse(e.data)
             PushNotification.localNotification({
                 message: message.title,
@@ -217,9 +220,15 @@ export default class App extends Component<Props> {
 
             });
         };
-        ws.onerror = () => {
-            ws = null
+        globalWs.onerror = () => {
+            globalWs = null
             this.connectWebsocket(auth)
+        }
+    }
+
+    disconnectWebsocket() {
+        if (globalWs) {
+            globalWs.close()
         }
     }
 
