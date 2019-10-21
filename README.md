@@ -9,14 +9,14 @@ This a demo project for [react-native-foreground-service](https://github.com/vox
 3. Run `react-native run-android` in the Terminal
 
 ## Config & Usage
-1. Register a `user` by pushing to users collection in db
+1. Register a `user` to splurt-server by pushing to users collection in the db
 ```json
 {
     "name": "user_name",
     "pwd": "user_password"
 }
 ```
-2. Register a `service` by pushing it to services collection in db
+2. Register a `service` to splurt-server by pushing it to services collection in the db
 ```json
 {
     "name": "service_name",
@@ -34,7 +34,7 @@ curl -d '{"name":"service_name", "pwd":"service_password"}'\
 curl -X POST http://localhost:http_port/push/user_id\
      -H "Authorization: Bearer  service_jwt"\
      -H "Content-Type: application/json"\
-     -d "{ \"title\": \"message\" }"
+     -d '{ "title": "message" }'
 ```
 
 ## References
