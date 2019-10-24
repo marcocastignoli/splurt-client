@@ -126,7 +126,7 @@ android {
     }
 
     defaultConfig {
-        applicationId "com.foregroundserviceexample"
+        applicationId "com.splurt"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

@@ -1,4 +1,4 @@
-package com.foregroundserviceexample;
+package com.splurt;
 
 import com.facebook.react.ReactActivity;
 
@@ -10,6 +10,6 @@ public class MainActivity extends ReactActivity {
      */
     @Override
     protected String getMainComponentName() {
-        return "ForegroundServiceExample";
+        return "Splurt";
     }
 }

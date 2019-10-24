@@ -1,4 +1,4 @@
-package com.foregroundserviceexample;
+package com.splurt;
 
 import android.app.Application;
 import android.util.Log;
