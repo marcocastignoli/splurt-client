@@ -6,7 +6,7 @@
  * @lint-ignore-every XPLATJSCOPYRIGHT1
  */
 
-import React, { Component } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Platform, StyleSheet, Text, View, Button, TextInput, FlatList } from 'react-native';
 import VIForegroundService from "@voximplant/react-native-foreground-service";
 import AsyncStorage from '@react-native-community/async-storage'
@@ -44,10 +44,9 @@ var PushNotification = require("react-native-push-notification")
 
 let globalWs = null
 
-type Props = {};
-export default class App extends Component<Props> {
+export default App = () => {
 
-    async startService() {
+    const startService = async() => {
         if (Platform.OS !== 'android') {
             console.log('Only Android platform is supported');
             return;
@@ -74,110 +73,112 @@ export default class App extends Component<Props> {
         }
         await VIForegroundService.startService(notificationConfig);
         await storeData('service-running', true)
-        this.setState({ serviceRunning: true })
+        setState({ ...state, serviceRunning: true })
     }
 
-    async stopService() {
+    const stopService = async() => {
         await removeData('service-running')
-        this.setState({ serviceRunning: false })
+        setState({ ...state, serviceRunning: false })
         await VIForegroundService.stopService()
     }
 
-    initAuth() {
+    const initAuth = () => {
         return {
             token: null,
             data: {}
         }
     }
 
-    state = {
+    const [state, setState] = useState({
         name: 'marco',
         pwd: '12345',
         urlAuthentication: 'http://192.168.1.76:8888',
         urlWebsocket: 'ws://192.168.1.76:3334',
         auth: {
             token: null,
-            data: this.initAuth()
+            data: initAuth()
         },
         err: '',
         serviceRunning: false,
         services: []
-    }
+    })
 
-    async componentDidMount() {
-        this.setState({
-            auth: await getData('auth'),
-            serviceRunning: await getData('service-running')
-        }, () => {
-            this.loadServices()
-        })
+    useEffect(() => {
+        (async() => {
+            setState({
+                ...state,
+                auth: await getData('auth'),
+                serviceRunning: await getData('service-running')
+            }, () => {
+                loadServices()
+            })
+        })()
+    }, [])
 
-    }
-
-    loadServices() {
+    const loadServices = () => {
         let token
         try {
-            token = this.state.auth.token
+            token = state.auth.token
         } catch (e) { }
         if (token) {
-            fetch(`${this.state.urlAuthentication}/users/available_services`, {
+            fetch(`${state.urlAuthentication}/users/available_services`, {
                 headers: {
                     "Authorization": `Bearer ${token}`,
                 }
             })
                 .then(r => r.json())
                 .then(services => {
-                    this.setState({ services })
+                    setState({ ...state, services })
                 })
         }
     }
 
-    denyService(service) {
+    const denyService = (service) => {
         let token
         try {
-            token = this.state.auth.token
+            token = state.auth.token
         } catch (e) { }
         if (token) {
-            fetch(`${this.state.urlAuthentication}/users/service/${service}`, {
+            fetch(`${state.urlAuthentication}/users/service/${service}`, {
                 method: 'DELETE',
                 headers: {
                     "Authorization": `Bearer ${token}`,
                 }
             }).then(() => {
-                this.loadServices()
+                loadServices()
             })
         }
     }
 
-    allowService(service) {
+    const allowService = (service) => {
         let token
         try {
-            token = this.state.auth.token
+            token = state.auth.token
         } catch (e) { }
         if (token) {
-            fetch(`${this.state.urlAuthentication}/users/service/${service}`, {
+            fetch(`${state.urlAuthentication}/users/service/${service}`, {
                 method: 'PUT',
                 headers: {
                     "Authorization": `Bearer ${token}`,
                 }
             }).then(() => {
-                this.loadServices()
+                loadServices()
             })
         }
     }
 
-    logout() {
+    const logout = () => {
         removeData('auth')
-        this.setState({ auth: this.initAuth() })
-        this.disconnectWebsocket()
+        setState({ ...state, auth: initAuth() })
+        disconnectWebsocket()
     }
 
-    async login() {
-        fetch(`${this.state.urlAuthentication}/users/login`, {
+    const login = async() => {
+        fetch(`${state.urlAuthentication}/users/login`, {
             method: 'POST',
             body: JSON.stringify({
-                name: this.state.name,
-                pwd: this.state.pwd,
+                name: state.name,
+                pwd: state.pwd,
             }),
             headers: {
                 "Content-Type": 'application/json'
@@ -187,21 +188,21 @@ export default class App extends Component<Props> {
             .then(async auth => {
                 try {
                     await storeData('auth', auth)
-                    await storeData('url-websocket', this.state.urlWebsocket)
-                    this.setState({ auth }, () => {
+                    await storeData('url-websocket', state.urlWebsocket)
+                    setState({ ...state, auth }, () => {
 
-                        this.loadServices()
-                        this.connectWebsocket(auth)
+                        loadServices()
+                        connectWebsocket(auth)
 
                     })
                 } catch (e) {
-                    this.setState({ err: e.toString() })
+                    setState({ ...state, err: e.toString() })
                 }
             })
-            .catch(e => this.setState({ err: e.toString() }))
+            .catch(e => setState({ ...state, err: e.toString() }))
     }
 
-    async connectWebsocket(auth) {
+    const connectWebsocket = async(auth) => {
         const urlWebsocket = await getData('url-websocket')
         globalWs = new WebSocket(`${urlWebsocket}`);
         globalWs.onopen = async () => {
@@ -222,73 +223,72 @@ export default class App extends Component<Props> {
         };
         globalWs.onerror = () => {
             globalWs = null
-            this.connectWebsocket(auth)
+            connectWebsocket(auth)
         }
     }
 
-    disconnectWebsocket() {
+    const disconnectWebsocket = () => {
         if (globalWs) {
             globalWs.close()
         }
     }
 
-    async setUrlWebsocket(text) {
-        this.setState({ urlWebsocket: text })
+    const setUrlWebsocket = async(text) => {
+        setState({ ...state, urlWebsocket: text })
         await storeData('url-websocket', text)
     }
 
-    render() {
-        const { name, pwd, auth, err, data, serviceRunning, urlAuthentication, urlWebsocket, services } = this.state
 
-        return (
-            <View style={styles.container}>
-                <Text>{err}</Text>
-                {!(auth && auth.token) ?
-                    <View>
-                        <TextInput style={{ width: 300, borderColor: 'gray', borderWidth: 1 }} onChangeText={text => this.setState({ urlAuthentication: text })} value={urlAuthentication} />
-                        <View style={styles.space} />
-                        <TextInput style={{ width: 300, borderColor: 'gray', borderWidth: 1 }} onChangeText={text => this.setUrlWebsocket(text)} value={urlWebsocket} />
-                        <View style={styles.space} />
-                        <TextInput style={{ width: 300, borderColor: 'gray', borderWidth: 1 }} onChangeText={text => this.setState({ name: text })} value={name} />
-                        <View style={styles.space} />
-                        <TextInput style={{ width: 300, borderColor: 'gray', borderWidth: 1 }} onChangeText={text => this.setState({ pwd: text })} value={pwd} />
-                        <View style={styles.space} />
-                        <Button title="Login" onPress={() => this.login()} />
+    const { name, pwd, auth, err, data, serviceRunning, urlAuthentication, urlWebsocket, services } = state
+
+    return (
+        <View style={styles.container}>
+            <Text>{err}</Text>
+            {!(auth && auth.token) ?
+                <View>
+                    <TextInput style={{ width: 300, borderColor: 'gray', borderWidth: 1 }} onChangeText={text => setState({ ...state, urlAuthentication: text })} value={urlAuthentication} />
+                    <View style={styles.space} />
+                    <TextInput style={{ width: 300, borderColor: 'gray', borderWidth: 1 }} onChangeText={text => setUrlWebsocket(text)} value={urlWebsocket} />
+                    <View style={styles.space} />
+                    <TextInput style={{ width: 300, borderColor: 'gray', borderWidth: 1 }} onChangeText={text => setState({ ...state, name: text })} value={name} />
+                    <View style={styles.space} />
+                    <TextInput style={{ width: 300, borderColor: 'gray', borderWidth: 1 }} onChangeText={text => setState({ ...state, pwd: text })} value={pwd} />
+                    <View style={styles.space} />
+                    <Button title="Login" onPress={() => login()} />
+                </View>
+                :
+                <View style={{ alignSelf: 'stretch', }}>
+                    <View style={styles.list}>
+                        <FlatList
+                            data={services}
+                            keyExtractor={item => item._id}
+                            renderItem={({ item }) => (
+                                <View style={{ alignSelf: 'stretch', flex: 1, flexDirection: 'row', marginVertical: 8, backgroundColor: '#eeeeee', }}>
+                                    <Text style={styles.item}>{item.name}</Text>
+                                    {item.active ?
+                                        <Button style={styles.item} title="Deny" onPress={() => denyService(item._id)} />
+                                        :
+                                        <Button style={styles.item} title="Allow" onPress={() => allowService(item._id)} />
+                                    }
+                                </View>
+                            )}
+                        />
                     </View>
-                    :
-                    <View style={{ alignSelf: 'stretch', }}>
-                        <View style={styles.list}>
-                            <FlatList
-                                data={services}
-                                keyExtractor={item => item._id}
-                                renderItem={({ item }) => (
-                                    <View style={{ alignSelf: 'stretch', flex: 1, flexDirection: 'row', marginVertical: 8, backgroundColor: '#eeeeee', }}>
-                                        <Text style={styles.item}>{item.name}</Text>
-                                        {item.active ?
-                                            <Button style={styles.item} title="Deny" onPress={() => this.denyService(item._id)} />
-                                            :
-                                            <Button style={styles.item} title="Allow" onPress={() => this.allowService(item._id)} />
-                                        }
-                                    </View>
-                                )}
-                            />
-                        </View>
-                        <View style={styles.space} />
-                        <Text>Logged in as {auth && auth.data && auth.data.name}</Text>
-                        <View style={styles.space} />
-                        <Button title="Logout" onPress={() => this.logout()} />
-                    </View>
-                }
-                <View style={styles.space} />
-                {serviceRunning ?
-                    <Button title="Stop foreground service" onPress={() => this.stopService()} />
-                    :
-                    <Button title="Start foreground service" onPress={() => this.startService()} />
-                }
-                <View style={styles.space} />
-            </View>
-        );
-    }
+                    <View style={styles.space} />
+                    <Text>Logged in as {auth && auth.data && auth.data.name}</Text>
+                    <View style={styles.space} />
+                    <Button title="Logout" onPress={() => logout()} />
+                </View>
+            }
+            <View style={styles.space} />
+            {serviceRunning ?
+                <Button title="Stop foreground service" onPress={() => stopService()} />
+                :
+                <Button title="Start foreground service" onPress={() => startService()} />
+            }
+            <View style={styles.space} />
+        </View>
+    );
 }
 
 const styles = StyleSheet.create({
