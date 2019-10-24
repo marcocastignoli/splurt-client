@@ -1,4 +1,5 @@
 /**
+ * Copyright (c) 2019 Marco Castignoli & Ahmed Tawfeeq
  * Copyright (c) 2011-2019, Zingaya, Inc. All rights reserved.
  *
  * @format
