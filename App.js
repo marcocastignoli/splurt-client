@@ -109,9 +109,8 @@ export default App = () => {
                 ...state,
                 auth: await getData('auth'),
                 serviceRunning: await getData('service-running')
-            }, () => {
-                loadServices()
             })
+            loadServices()
         })()
     }, [])
 
@@ -189,12 +188,9 @@ export default App = () => {
                 try {
                     await storeData('auth', auth)
                     await storeData('url-websocket', state.urlWebsocket)
-                    setState({ ...state, auth }, () => {
-
-                        loadServices()
-                        connectWebsocket(auth)
-
-                    })
+                    setState({ ...state, auth })
+                    loadServices()
+                    connectWebsocket(auth)
                 } catch (e) {
                     setState({ ...state, err: e.toString() })
                 }
