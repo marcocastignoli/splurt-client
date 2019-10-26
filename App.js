@@ -4,7 +4,6 @@
  *
  * @format
  * @flow
- * @lint-ignore-every XPLATJSCOPYRIGHT1
  */
 
 import React, { useState, useEffect } from 'react';
@@ -93,8 +92,8 @@ export default App = () => {
     const [state, setState] = useState({
         name: 'marco',
         pwd: '12345',
-        urlAuthentication: 'http://192.168.1.76:8888',
-        urlWebsocket: 'ws://192.168.1.76:3334',
+        urlAuthentication: 'http://192.168.100.30:8888',
+        urlWebsocket: 'ws://192.168.100.30:3334',
         auth: {
             token: null,
             data: initAuth()
