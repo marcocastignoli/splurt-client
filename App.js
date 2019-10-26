@@ -44,7 +44,7 @@ var PushNotification = require("react-native-push-notification")
 
 let globalWs = null
 
-export default App = () => {
+const App: () => React$Node = () => {
 
     const startService = async() => {
         if (Platform.OS !== 'android') {
@@ -306,3 +306,5 @@ const styles = StyleSheet.create({
         flexDirection: 'column'
     }
 });
+
+export default App;
