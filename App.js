@@ -10,6 +10,7 @@ import React, { useState, useEffect } from 'react';
 import { Platform, StyleSheet, Text, View, Button, TextInput, FlatList } from 'react-native';
 import VIForegroundService from "@voximplant/react-native-foreground-service";
 import AsyncStorage from '@react-native-community/async-storage'
+import { typeAlias, booleanLiteral } from '@babel/types';
 
 const storeData = async (key, value) => {
     try {
@@ -31,7 +32,7 @@ const removeData = async key => {
 
 
 
-const getData = async key => {
+const getData: (string) => any = async key => {
     try {
         const value = await AsyncStorage.getItem(`@${key}`)
         return JSON.parse(value)
@@ -66,7 +67,8 @@ const App: () => React$Node = () => {
             title: 'Foreground Service',
             text: 'Foreground service is running',
             icon: 'ic_notification',
-            priority: 0
+            priority: 0,
+            channelId: ''
         };
         if (Platform.Version >= 26) {
             notificationConfig.channelId = 'ForegroundServiceChannel';
@@ -82,22 +84,32 @@ const App: () => React$Node = () => {
         await VIForegroundService.stopService()
     }
 
-    const initAuth = () => {
-        return {
-            token: null,
-            data: {}
-        }
-    }
+    const initAuth = () => ({
+        token: '',
+        data: ({ name: '' })
+    })
 
-    const [state, setState] = useState({
+    type s = {
+        name: string,
+        pwd: string,
+        urlAuthentication: string,
+        urlWebsocket: string,
+        auth: {
+            token: string,
+            data: {
+                name: string
+            }
+        },
+        err: string,
+        serviceRunning: bool,
+        services: []
+    };
+    const [state, setState]: [s, ((s => s) | s) => void] = useState({
         name: 'marco',
         pwd: '12345',
-        urlAuthentication: 'http://192.168.100.30:8888',
-        urlWebsocket: 'ws://192.168.100.30:3334',
-        auth: {
-            token: null,
-            data: initAuth()
-        },
+        urlAuthentication: 'http://192.168.100.3:8888',
+        urlWebsocket: 'ws://192.168.100.3:3334',
+        auth: initAuth(),
         err: '',
         serviceRunning: false,
         services: []
@@ -105,10 +117,12 @@ const App: () => React$Node = () => {
 
     useEffect(() => {
         (async() => {
+            const auth = await getData('auth')
+            const serviceRunning = await getData('service-running')
             setState({
                 ...state,
-                auth: await getData('auth'),
-                serviceRunning: await getData('service-running')
+                auth,
+                serviceRunning
             })
             loadServices()
         })()
@@ -200,17 +214,19 @@ const App: () => React$Node = () => {
 
     const connectWebsocket = async(auth) => {
         const urlWebsocket = await getData('url-websocket')
-        globalWs = new WebSocket(`${urlWebsocket}`);
+        globalWs = new WebSocket(`${urlWebsocket ? urlWebsocket : ""}`);
         globalWs.onopen = async () => {
             // connection opened
             const token = await auth.token
-            globalWs.send(JSON.stringify({
-                channel: 'authentication',
-                data: token
-            }));
+            if (globalWs) {
+                globalWs.send(JSON.stringify({
+                    channel: 'authentication',
+                    data: token
+                }));
+            }
         };
         globalWs.onmessage = (e) => {
-            const message = JSON.parse(e.data)
+            const message = JSON.parse(String(e.data))
             PushNotification.localNotification({
                 message: message.title,
                 title: message.service,
@@ -235,7 +251,7 @@ const App: () => React$Node = () => {
     }
 
 
-    const { name, pwd, auth, err, data, serviceRunning, urlAuthentication, urlWebsocket, services } = state
+    const { name, pwd, auth, err, serviceRunning, urlAuthentication, urlWebsocket, services } = state
 
     return (
         <View style={styles.container}>
@@ -262,9 +278,9 @@ const App: () => React$Node = () => {
                                 <View style={{ alignSelf: 'stretch', flex: 1, flexDirection: 'row', marginVertical: 8, backgroundColor: '#eeeeee', }}>
                                     <Text style={styles.item}>{item.name}</Text>
                                     {item.active ?
-                                        <Button style={styles.item} title="Deny" onPress={() => denyService(item._id)} />
+                                        <Button title="Deny" onPress={() => denyService(item._id)} />
                                         :
-                                        <Button style={styles.item} title="Allow" onPress={() => allowService(item._id)} />
+                                        <Button title="Allow" onPress={() => allowService(item._id)} />
                                     }
                                 </View>
                             )}
